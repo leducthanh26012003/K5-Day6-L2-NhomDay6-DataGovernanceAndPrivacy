@@ -1,7 +1,7 @@
 member,git_author_name,git_email,role,modules_files,commit_shas,evidence_note,presenter
 Lê Đức Thanh (TV1),Lê Đức Thanh,leducthanh26012003@gmail.com,Lead / Integrator,"src/pipeline.py; configs/lab.yaml; merge branches","bcf04df, a7f8c0d, 5f0a51a, 98f3889, 482625b, 999073c, 9417e3d",Wire E2E pipeline and batch decision policy; merge TV3/TV4/TV5 branches,Có
-Phạm Trần Anh (TV2),GemmaP512,137386575+GemmaP512@users.noreply.github.com,Laplacian baseline,"src/t02/baseline.py; evaluation files",ade7f1e,Laplacian variance baseline with 20th-percentile threshold,
+Phạm Trần Anh (TV2),GemmaP512,https://github.com/GemmaP512,Laplacian baseline,"src/t02/baseline.py; evaluation files",ade7f1e,Laplacian variance baseline with 20th-percentile threshold,
 Nguyễn Viết Minh (TV3),Nguyễn Viết Minh,https://github.com/minh23012003,Sharpness features,"src/t02/feat_sharpness.py","dc3d72f, 999073c","TV3 sharpness: lap_var, lap_tile_min, blockiness, lap_norm with per-camera normalisation",
-Trần Trọng Thái (TV4),Trần Trọng Thái,trantrongthai.aleri@gmail.com,Exposure/glare features,"src/t02/feat_exposure.py; tests/test_t02_exposure.py; configs/tv4_calibration.yaml",517495f,"TV4 exposure/glare: z-score within light×camera, 3-tier glare detection, blob speckle filter",
+Trần Trọng Thái (TV4),Trần Trọng Thái,https://github.com/tranthai2402,Exposure/glare features,"src/t02/feat_exposure.py; tests/test_t02_exposure.py; configs/tv4_calibration.yaml",517495f,"TV4 exposure/glare: z-score within light×camera, 3-tier glare detection, blob speckle filter",
 Phạm Quang Huy (TV5),Phạm Quang Huy,https://github.com/feedfoot,Scoring + review,"src/t02/score.py; src/t02/review_step.py; configs/tv5_score.yaml","b18c0e2, 09e3fc0, 482625b","TV5 margin-based scoring (sigmoid), contact sheet + audit log review step",
 Cao Văn Dương (TV6),Cao Văn Dương,https://github.com/Duong122702,Research / report,"reports/group_report.md",f478478,Research references + ablation analysis + group report writing,
