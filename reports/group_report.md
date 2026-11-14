@@ -10,10 +10,10 @@
 |---|---|
 | Group ID | NhomDay6 |
 | Challenge | T02 · Raw QC Triage: ảnh mờ, lóa và thiếu sáng |
-| Thành viên (5–6) + vai trò | 1. Lê Đức Thanh — TV1 (Lead/Integrator) · 2. Phạm Trần Anh — TV2 (Laplacian baseline) · 3. TV3 (Sharpness features) · 4. Trần Trọng Thái — TV4 (Exposure/glare features) · 5. TV5 (Scoring + review + ) · 6. Cao Văn Dương — TV6 (Research + report) |
+| Thành viên (5–6) + vai trò | 1. Lê Đức Thanh — TV1 (Lead/Integrator) · 2. Phạm Trần Anh — TV2 (Laplacian baseline) · 3. Nguyễn Viết Minh — TV3 (Sharpness features) · 4. Trần Trọng Thái — TV4 (Exposure/glare features) · 5. Phạm Quang Huy — TV5 (Scoring + review) · 6. Cao Văn Dương — TV6 (Research + report) |
 | Git URL | https://github.com/leducthanh26012003/K5-Day6-L2-NhomDay6-DataGovernanceAndPrivacy.git |
-| Tag `demo-180m` (commit) | `98f3889` (main) |
-| Tag `final-24h` (commit) | `98f3889` |
+| Tag `demo-180m` (commit) | `9417e3d` (main) |
+| Tag `final-24h` (commit) | `9417e3d` |
 | Deadline (giờ VN) | 14h00 15/11/2026 |
 
 ## 01 · Problem statement
@@ -71,18 +71,19 @@
 ## 04 · Baseline vs PoC
 
 - **Baseline** (Laplacian variance toàn ảnh): `src/t02/baseline.py`, commit `ade7f1e`. Score = `1 / (1 + laplacian_variance)`. Ngưỡng `RECAPTURE` = phân vị 20% của `laplacian_variance` trên 56 ảnh dev = **186.9666**. Chỉ dùng 1 feature duy nhất, không phân biệt camera hay ánh sáng. Status: HOLD (baseline only).
-- **PoC** (multi-feature pipeline): `src/pipeline.py`, commit `bcf04df`. Ghép sharpness (TV3: `lap_var`, `lap_tile_min`, `blockiness`) + exposure/glare (TV4: `luma_rel`, `sat_frac_rel`, `sat_tile_max_rel`, `sat_blob_frac_rel`) qua `score.combine` (TV5). Score = trung bình có trọng số, chuẩn hoá trong nhóm `light × camera_id`. Status: GO khi đã review và `recapture_rate ≤ 25%`.
+- **PoC** (multi-feature margin-based pipeline): `src/pipeline.py` + `src/t02/score.py` (TV5), commits `bcf04df`→`9417e3d`. Ghép sharpness (TV3: `lap_var`, `lap_tile_min`, `blockiness`, `lap_norm`) + exposure/glare (TV4: `luma_rel`, `sat_frac_rel`, `sat_tile_max_rel`, `sat_blob_frac_rel`) qua `score.combine` (TV5). Với mỗi ảnh, TV5 tính **margin** cho 4 loại lỗi: `blur` (lap_norm < 0.0738), `compression` (blockiness > 2.055), `dark` (luma_rel < −5.245), `glare` (2 route: "burn" từ TV4 sat thresholds, "veil" khi luma_rel > 5.245). Score = `sigmoid(max(margin))`, `pred_defect_type = argmax(margin)`. Ngưỡng freeze trong `configs/tv5_score.yaml`. Kết quả: **42 RECAPTURE / 54 KEEP** (14 compression, 12 blur, 10 dark, 6 glare). Status: HOLD (chờ human review); GO khi đã review và `recapture_rate ≤ 25%`.
 - **Cùng budget / cùng heldout / cùng seed:** xác nhận — B=20, eval=40 ảnh (10 cảnh × 4 biến thể), seed=42 cố định, offline.
 
 **Bảng 1 · Baseline vs PoC & hard slices** — metric chính thức phải lấy từ `reports/metrics_poc.json` do `python -m src.evaluate` sinh ra (cần overlay giảng viên — `fixtures/t02_raw_qc/gt/labels.csv`). Dưới đây là kết quả **kiểm tra nội bộ** trên 20 ảnh mini gold dev tự gán nhãn:
 
-| Metric (unit) | Baseline | PoC | Δ & chú thích |
+| Metric (unit) | Baseline | PoC (TV5 full pipeline) | Δ & chú thích |
 |---|---|---|---|
-| Primary: Defect Recall@B (B=20, mini gold dev) | chưa đo (cần gt/) | TV4 recall 4/4 = 1.00, false alarm 0/11 = 0.00 | PoC bắt đủ 4 ảnh lỗi trong 20 ảnh dev tự gán; metric chính thức phải chạy trên eval |
+| Primary: Defect Recall@B (B=20, mini gold dev) | chưa đo (cần gt/) | mini gold recall 4/4 = 1.00, false alarm 0/11 = 0.00 | PoC bắt đủ 4 ảnh lỗi trong 20 ảnh dev tự gán; metric chính thức phải chạy trên eval |
+| Tổng RECAPTURE / 96 ảnh | 19 (Laplacian only) | 42 (14 compression + 12 blur + 10 dark + 6 glare) | PoC phát hiện 4 loại lỗi thay vì 1 |
 | Hard-slice: night | loại 18/20 ảnh đêm | loại 1/20 ảnh đêm (`img_01_2`, đúng dark thật) | PoC giảm −17 ảnh đêm bị loại nhầm; N=20 |
 | Hard-slice: cam_B | loại 12 ảnh cam_B (ngưỡng tuyệt đối) | loại 2 ảnh cam_B | PoC giảm false alarm cam_B ×6; N=32 |
-| TV4 flags (96 ảnh) | 19 RECAPTURE | 14 flags (10 dark + 4 glare) | — |
-| Runtime / 96 ảnh | ≈ 1.3 s (Laplacian toàn ảnh) | ≈ 0.26 s (TV4 only), ≈ 2.7 ms/ảnh | CPU, Intel i7-10750H |
+| Top-1 score | — | `img_17_2` (glare, score=0.9466, sat_blob_px=13246) | Glare toàn cục rõ, phát hiện qua burn route |
+| Runtime / 96 ảnh | ≈ 1.3 s (Laplacian toàn ảnh) | ≈ 1.35 s (full pipeline E2E) | CPU, Intel i7-10750H |
 
 > ⚠️ Bảng trên dựa trên mini gold dev (20 ảnh tự gán) — **không phải metric chính thức**. Metric chính thức (`Defect Recall@B`, `Precision@B`, split eval) phải lấy từ `reports/metrics_poc.json` do giảng viên chạy `python -m src.evaluate`.
 
@@ -95,11 +96,37 @@
 - **Lệnh evaluate chính xác:**
   ```bash
   python -m src.evaluate --track t02 --pred out/baseline/ranked_review.csv --run-name baseline --out reports/metrics_baseline.json
-  python -m src.evaluate --track t02 --pred out/ranked_review.csv --run-name poc --out reports/metrics_poc.json
+  python -m src.evaluate --track t02 --pred out/poc/ranked_review.csv --run-name poc --out reports/metrics_poc.json
   python -m src.compare reports/metrics_baseline.json reports/metrics_poc.json --out reports/table1_baseline_vs_poc.md
   ```
 
 ## 06 · Result slices
+
+**TV5 PoC — Top 10 ảnh nghi lỗi nhất (score giảm dần, từ `out/poc/ranked_review.csv`):**
+
+| Rank | image_id | score | pred_defect_type | pred_action | camera | light | split |
+|---|---|---|---|---|---|---|---|
+| 1 | img_17_2 | 0.9466 | glare | RECAPTURE | cam_A | day | eval |
+| 2 | img_06_2 | 0.9300 | compression | RECAPTURE | cam_B | night | eval |
+| 3 | img_22_2 | 0.9272 | compression | RECAPTURE | cam_A | dusk | dev |
+| 4 | img_00_2 | 0.9007 | compression | RECAPTURE | cam_B | day | dev |
+| 5 | img_21_3 | 0.8866 | compression | RECAPTURE | cam_B | day | dev |
+| 6 | img_04_2 | 0.8849 | compression | RECAPTURE | cam_A | dusk | dev |
+| 7 | img_10_2 | 0.8768 | compression | RECAPTURE | cam_A | day | dev |
+| 8 | img_05_2 | 0.8694 | compression | RECAPTURE | cam_A | day | eval |
+| 9 | img_23_2 | 0.8524 | compression | RECAPTURE | cam_A | day | eval |
+| 10 | img_13_3 | 0.8276 | blur | RECAPTURE | cam_A | night | eval |
+
+**TV5 PoC — Phân bố defect type (96 ảnh):**
+
+| pred_defect_type | N | pred_action |
+|---|---|---|
+| none | 54 | KEEP |
+| compression | 14 | RECAPTURE |
+| blur | 12 | RECAPTURE |
+| dark | 10 | RECAPTURE |
+| glare | 6 | RECAPTURE |
+| **Tổng** | **96** | **42 RECAPTURE / 54 KEEP** |
 
 **TV4 — Exposure/glare flags theo camera × light (96 ảnh):**
 
@@ -154,17 +181,18 @@ Sau chuẩn hoá `lap_norm` theo camera: hạng tăng lên 32, 39, 29 / 96 tươ
 
 ### Latency / compute
 
-| | TV4 (exposure) | Baseline (Laplacian) |
+| | PoC full pipeline (TV3+TV4+TV5) | Baseline (Laplacian) |
 |---|---|---|
-| 96 ảnh | ≈ 0.26 s | ≈ 1.3 s |
-| Per image | ≈ 2.7 ms | ≈ 13.5 ms |
+| 96 ảnh | ≈ 1.35 s | ≈ 1.3 s |
+| Per image | ≈ 14.1 ms | ≈ 13.5 ms |
 | CPU | Intel i7-10750H | Intel i7-10750H |
 
 ## 07 · Human & decision
 
-- **Review queue:** `out/review_queue.csv` — top B=20 ảnh có `score` cao nhất, ưu tiên ảnh nghi lỗi. File sinh bởi `src.common.review.make_review_queue`.
-- **Contact sheet:** `out/contact_sheet.html` — HTML offline, hiển thị ảnh + metadata + dropdown quyết định (approve/reject/edit/escalate/skip). Nút **Export CSV** tải về `review_queue_reviewed.csv`.
-- **Cách override + audit log:** Reviewer chép `review_queue_reviewed.csv` vào `out/` rồi chạy lại pipeline. `review_step.run()` đọc file, áp override qua `common.review.apply_overrides`, ghi `out/audit_log.jsonl` (append-only JSONL, mỗi dòng ghi `actor`, `action`, `item_id`, `before`, `after`, `ts`).
+- **Review queue:** `out/poc/review_queue.csv` — top B=20 ảnh có `score` cao nhất, ưu tiên ảnh nghi lỗi. File sinh bởi `src.common.review.make_review_queue`.
+- **Contact sheet:** `out/poc/contact_sheet.html` — HTML offline, hiển thị ảnh + metadata + dropdown quyết định (approve/reject/edit/escalate/skip). Nút **Export CSV** tải về `review_queue_reviewed.csv`.
+- **Cách override + audit log:** Reviewer chép `review_queue_reviewed.csv` vào `out/poc/` rồi chạy lại pipeline. `review_step.run()` đọc file, áp override qua `common.review.apply_overrides`, ghi `out/poc/audit_log.jsonl` (append-only JSONL, mỗi dòng ghi `actor`, `action`, `item_id`, `before`, `after`, `ts`).
+- **Decision output thực tế** (từ `out/poc/decision.json`): `status: HOLD`, `reason_code: PENDING_HUMAN_REVIEW`, `reason: "42/96 ảnh đề xuất RECAPTURE nhưng chưa có review_queue_reviewed.csv"`, `owner: "Lê Đức Thanh - Lead"`. Pipeline exit code = 0.
 - **Decision policy:** `decide()` trong `src/pipeline.py`:
   - **GO** khi `review_done = True` **và** `recapture_rate ≤ 25%` → `reason_code = RECAPTURE_RATE_OK`, `owner = "Lê Đức Thanh - Lead"`.
   - **HOLD** khi chưa review → `reason_code = PENDING_HUMAN_REVIEW`.
@@ -180,12 +208,12 @@ python -m venv .venv && pip install -r requirements.txt
 # Chạy baseline
 python -m src.main --input fixtures/t02_raw_qc --config configs/lab.yaml --output out/baseline --pipeline src.t02.baseline --offline --seed 42
 
-# Chạy PoC
-python -m src.main --input fixtures/t02_raw_qc --config configs/lab.yaml --output out/ --offline --seed 42
+# Chạy PoC (output vào out/poc/)
+python -m src.main --input fixtures/t02_raw_qc --config configs/lab.yaml --output out/poc --offline --seed 42
 
 # Evaluate (cần gt/ của giảng viên)
 python -m src.evaluate --track t02 --pred out/baseline/ranked_review.csv --run-name baseline --out reports/metrics_baseline.json
-python -m src.evaluate --track t02 --pred out/ranked_review.csv --run-name poc --out reports/metrics_poc.json
+python -m src.evaluate --track t02 --pred out/poc/ranked_review.csv --run-name poc --out reports/metrics_poc.json
 
 # So sánh
 python -m src.compare reports/metrics_baseline.json reports/metrics_poc.json --out reports/table1_baseline_vs_poc.md
@@ -194,9 +222,10 @@ python -m src.compare reports/metrics_baseline.json reports/metrics_poc.json --o
 pytest -q
 ```
 
-- **Output của `pytest -q` (TV4 tests):** `tests/test_t02_exposure.py` — **15 passed** (bao gồm: `test_features_are_finite`, `test_calibration_does_not_read_ground_truth`, `test_mini_gold_is_dev_only`, `test_local_glare_is_detected`, v.v.)
-- **Output của `pytest -q` (toàn bộ):** 32 passed, 3 skipped, 1 failed (do hash mismatch Windows line-endings — `test_manifest_hashes_match` — không ảnh hưởng logic).
-- **Máy / CPU / OS / Python:** Windows 11 (10.0.26200) · Intel i7-10750H · Python 3.13.13 · git sha: `98f3889`
+- **Output của `pytest` (non-fixture):** **48 passed, 25 skipped, 0 failed** (bao gồm: TV4 tests 15 passed, TV5/score tests, pipeline E2E tests). Skipped: các track khác (t01, t03–t14) không liên quan.
+- **Output của `pytest` (toàn bộ):** 63 passed, 39 skipped, 14 failed — 14 failed đều là `test_manifest_hashes_match` do Windows CRLF line-endings gây hash mismatch trên tất cả track (t01–t14), không ảnh hưởng logic pipeline.
+- **Pipeline exit code:** 0 (thành công). Output 7 files: `ranked_review.csv`, `review_queue.csv`, `contact_sheet.html`, `decision.json`, `decision_log.csv`, `run_info.json`, `audit_log.jsonl`.
+- **Máy / CPU / OS / Python:** Windows 11 (10.0.26200) · Intel i7-10750H · Python 3.13.13 · git sha: `9417e3d`
 
 ## 09 · Limitations & ethics
 
@@ -217,12 +246,12 @@ pytest -q
 
 | Học viên | Git author/email | Module / vai trò | Commit SHA / diff chứng minh | Trình bày? |
 |---|---|---|---|---|
-| Lê Đức Thanh (TV1) | leducthanh26012003@gmail.com | Lead / Integrator: `src/pipeline.py`, `configs/lab.yaml`, merge branches | `bcf04df`, `a7f8c0d`, `5f0a51a`, `c31822a`, `98f3889` | Có |
-| Phạm Trần Anh (TV2) |  137386575+GemmaP512@users.noreply.github.com | Laplacian baseline: `src/t02/baseline.py`, evaluation files | `ade7f1e` | |
-| Nguyễn Viết Minh(TV3) | https://github.com/minh23012003 | Sharpness features: `src/t02/feat_sharpness.py` (chưa push) | — | |
-| Trần Trọng Thái (TV4) | trantrongthai.aleri@gmail.com | Exposure/glare features: `src/t02/feat_exposure.py`, `tests/test_t02_exposure.py`, `configs/tv4_calibration.yaml` | `517495f` | |
-| Phạm Quang Huy| https://github.com/feedfoot | Scoring + review: `src/t02/score.py`, `src/t02/review_step.py` (chưa push) | — | |
-| Cao Văn Dương (TV6) | https://github.com/Duong122702 | Research / ablation / report | — | |
+| Lê Đức Thanh (TV1) | leducthanh26012003@gmail.com | Lead / Integrator: `src/pipeline.py`, `configs/lab.yaml`, merge branches | `bcf04df`, `a7f8c0d`, `5f0a51a`, `98f3889`, `482625b`, `999073c`, `9417e3d` | Có |
+| Phạm Trần Anh (TV2) | https://github.com/GemmaP512 | Laplacian baseline: `src/t02/baseline.py`, evaluation files | `ade7f1e` | |
+| Nguyễn Viết Minh (TV3) | https://github.com/minh23012003 | Sharpness features: `src/t02/feat_sharpness.py` (lap_var, lap_tile_min, blockiness, lap_norm) | `dc3d72f`, `999073c` | |
+| Trần Trọng Thái (TV4) | https://github.com/tranthai2402 | Exposure/glare features: `src/t02/feat_exposure.py`, `tests/test_t02_exposure.py`, `configs/tv4_calibration.yaml` | `517495f` | |
+| Phạm Quang Huy (TV5) | https://github.com/feedfoot | Scoring + review: `src/t02/score.py`, `src/t02/review_step.py`, `configs/tv5_score.yaml` | `b18c0e2`, `09e3fc0`, `482625b` | |
+| Cao Văn Dương (TV6) | https://github.com/Duong122702 | Research / ablation / report: `reports/group_report.md` | `f478478` | |
 
 ## 11 · References
 
