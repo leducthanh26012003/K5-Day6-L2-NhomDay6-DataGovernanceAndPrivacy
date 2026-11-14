@@ -1,0 +1,4 @@
+# Fixtures are checked byte-for-byte against the sha256 values in manifest.csv.
+# Without this, Git on Windows (core.autocrlf=true) rewrites LF to CRLF on checkout,
+# every hash check fails and src.main stops at the load step ("provenance check failed").
+fixtures/** -text
