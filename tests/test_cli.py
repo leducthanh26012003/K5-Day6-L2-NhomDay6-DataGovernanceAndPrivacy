@@ -14,11 +14,30 @@ from src.common.gt_guard import GroundTruthAccessError, disable_gt_guard, enable
 from src.common.offline import NetworkBlockedError, disable_offline_guard, enable_offline_guard
 
 
-def test_template_pipeline_fails_clearly_not_silently(tmp_path):
+def test_group_pipeline_runs_end_to_end_and_waits_for_review(tmp_path):
+    # Starter test expected exit 3 while src/pipeline.py was a template; the T02 pipeline is now wired.
     rc = runner.main(["--track", "t02", "--output", str(tmp_path), "--offline"])
-    assert rc == 3                                   # NotImplemented -> explicit exit code
+    assert rc == 0
     info = json.loads((tmp_path / "run_info.json").read_text())
-    assert info["status"] == 3 and info["seed"] == 42
+    assert info["status"] == 0 and info["seed"] == 42
+    pred = pd.read_csv(tmp_path / "ranked_review.csv", dtype={"image_id": str})
+    assert len(pred) == 96 and pred["image_id"].is_unique
+    decision = json.loads((tmp_path / "decision.json").read_text(encoding="utf-8"))
+    assert decision["status"] == "HOLD" and decision["reason_code"] == "PENDING_HUMAN_REVIEW"
+
+
+def test_group_pipeline_names_missing_module(tmp_path, monkeypatch):
+    # A missing team module must stop with exit 3 and say who owns it, not fail silently.
+    import importlib
+    real = importlib.import_module
+    def fake(name, *a, **k):
+        if name == "src.t02.score":
+            raise ModuleNotFoundError(name=name)
+        return real(name, *a, **k)
+    monkeypatch.setattr(importlib, "import_module", fake)
+    rc = runner.main(["--track", "t02", "--output", str(tmp_path), "--offline"])
+    assert rc == 3
+    assert json.loads((tmp_path / "run_info.json").read_text())["status"] == 3
 
 
 def _run_baseline(out):
