@@ -1,0 +1,32 @@
+# TV5 · Tham so cham diem (score.py) — FROZEN
+# Fit bang `python -m src.t02.score --fit` tren reports/mini_gold_dev.csv (chi split dev).
+# Khong sua tay, khong fit lai sau khi da xem ket qua split eval.
+# margin = (do lech feature so voi thr, theo huong 'cang loi') / scale; score = sigmoid(max margin).
+
+blur:
+  lap_norm_thr: 0.0737882229302619
+  log10_lap_norm_thr: -1.132012948807706
+  scale: 0.9806383532490324
+compression:
+  blockiness_thr: 2.0546385130607376
+  log10_blockiness_thr: 0.3127354244639013
+  scale: 0.09836804859423082
+dark:
+  luma_rel_thr_from_tv4: -5.244861041808294
+  scale: 4.612682350925797
+glare:
+  burn_scale: 0.6652068866745953
+  veil_luma_rel_thr: 5.244861041808294
+tv5_fit:
+  source: reports/mini_gold_dev.csv
+  split: dev
+  n_labelled: 20
+  n_dark: 3
+  n_glare: 1
+  n_blur: 3
+  n_compression: 2
+  n_none: 11
+  tv4_calibration: configs/tv4_calibration.yaml
+  note: 'thr = giua khe ho anh loi / anh sach gan nhat; scale = nua khe ho. dark +
+    glare(burn) dung nguong frozen cua TV4; veil = guong cua nguong dark TV4. Mau
+    nho (blur 3, compression 2, dark 3, glare 1): nguong la uoc luong tho.'
