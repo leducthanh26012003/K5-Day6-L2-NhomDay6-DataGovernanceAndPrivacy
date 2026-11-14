@@ -1,0 +1,33 @@
+# TV4 · Tham số calibration — exposure / glare (dark + glare)
+#
+# Nguồn: reports/mini_gold_dev.csv (20 ảnh dev do nhóm tự gán nhãn).
+# CHỈ dùng split dev để fit. Đã freeze trước khi chấm split eval.
+#
+# Cách dùng (TV5 gọi khi ghép score):
+#   from src.t02.feat_exposure import apply_calibration
+#   feats = apply_calibration(feats, params)      # params = dict này
+#
+# Ý nghĩa:
+#   tv4_dark_luma_rel             luma_mean < ngưỡng  =>  ảnh tối hơn nhóm của nó
+#   tv4_glare_sat_frac_rel        tỉ lệ pixel cháy sáng toàn ảnh (tương đối)
+#   tv4_glare_sat_tile_max_rel    ô cháy sáng nhất trong lưới 4x6 (bắt glare cục bộ)
+#   tv4_glare_sat_blob_frac_rel   blob cháy sáng lớn nhất / tổng pixel (tương đối)
+#   tv4_glare_min_blob_px         glare thật là vùng cháy LIÊN TIẾP, không phải speckle
+#   tv4_glare_blob_px_floor       sàn tuyệt đối, chặn calibration hỏng
+
+tv4_dark_luma_rel: -5.244861041808294
+tv4_glare_sat_frac_rel: 5.625807228009244
+tv4_glare_sat_tile_max_rel: 4.046944416405027
+tv4_glare_sat_blob_frac_rel: 5.564548765681909
+tv4_glare_min_blob_px: 162.0
+tv4_glare_blob_px_floor: 40.0
+
+# Thông tin provenance (được sinh tự động bởi calibrate()).
+tv4_fit:
+  n_labelled: 20
+  n_dark: 3
+  n_glare: 1
+  n_none: 11
+  split: dev
+  source: reports/mini_gold_dev.csv
+  note: 1 labelled glare frame only -> local glare threshold fitted on clean frames
